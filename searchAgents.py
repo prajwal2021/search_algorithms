@@ -286,20 +286,23 @@ class CornersProblem(search.SearchProblem):
                 print ('Warning: no food in corner ' + str(corner))
         self._expanded = 0 # Number of search nodes expanded
         "*** TTU CS 5368 Fall 2025 YOUR CODE HERE ***"
-        " Keep track of four corners "
-        util.raiseNotDefined()
-        
+        # Keeping track of four corners
+        # Initializing visited corners to all False
+        self.numCorners = len(self.corners)
+        self.startingGameState = startingGameState #storing initial state of the game
 
 
     def getStartState(self):
         "Returns the start state (in your state space, not the full Pacman state space)"
         "*** TTU CS 5368 Fall 2025 YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return (self.startingPosition, tuple([False])*self.numCorners)
 
     def isGoalState(self, state):
         "Returns whether this search state is a goal state of the problem"
         "*** TTU CS 5368 Fall 2025 YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        pacman_position,corners_visited = state
+        return all(corners_visited)
+    
 
     def getSuccessors(self, state):
         """
@@ -312,18 +315,24 @@ class CornersProblem(search.SearchProblem):
          required to get there, and 'stepCost' is the incremental
          cost of expanding to that successor
         """
-
+        "*** TTU CS 5368 Fall 2025 YOUR CODE HERE ***"
         successors = []
-        for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
-            # Add a successor state to the successor list if the action is legal
-            # Here's a code snippet for figuring out whether a new position hits a wall:
-            #   x,y = currentPosition
-            #   dx, dy = Actions.directionToVector(action)
-            #   nextx, nexty = int(x + dx), int(y + dy)
-            #   hitsWall = self.walls[nextx][nexty]
-            # Hint you should keep track of corners and check if you have visited them
+        pacman_position, corners_visited = state
 
-            "*** TTU CS 5368 Fall 2025 YOUR CODE HERE ***"
+        for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
+            x,y = pacman_position
+            dx, dy = Actions.directionToVector(action)
+            nextx, nexty = int(x + dx), int(y + dy)
+            next_position = (nextx, nexty)
+
+            if not self.walls[nextx][nexty]:
+                new_corners_visited = list(corners_visited)
+                for i, corner_pos in enumerate(self.corners):
+                    if next_position == corner_pos and not new_corners_visited[i]:
+                        new_corners_visited[i] = True
+                
+                new_corners_visited_tuple = tuple(new_corners_visited)
+                successors.append( ( (next_position, new_corners_visited_tuple), action, 1) )
 
 
         self._expanded += 1
@@ -356,14 +365,28 @@ def cornersHeuristic(state, problem):
     on the shortest path from the state to a goal of the problem; i.e.
     it should be admissible (as well as consistent).
     """
+    
+    
     corners = problem.corners # These are the corner coordinates
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
-
     "*** TTU CS 5368 Fall 2025 YOUR CODE HERE ***"
+    pacman_position, corners_visited = state
+    unvisited_corners = []
+    for i, corner_pos in enumerate(corners):
+        if not corners_visited[i]:
+            unvisited_corners.append(corner_pos)
 
-    
+    if not unvisited_corners:
+        return 0 # All corners visited
 
-    return 0 # Default to trivial solution
+    # Heuristic is the maximum of the maze distances from current position to unvisited corners
+    max_dist = 0
+    for corner_pos in unvisited_corners:
+        dist = mazeDistance(pacman_position, corner_pos, problem.startingGameState)
+        if dist > max_dist:
+            max_dist = dist
+
+    return max_dist
 
 
 class AStarCornersAgent(SearchAgent):
@@ -458,8 +481,18 @@ def foodHeuristic(state, problem):
     """
     position, foodGrid = state
     "*** TTU CS 5368 Fall 2025 YOUR CODE HERE ***"
+    food_list = foodGrid.asList()
+
+    if not food_list:
+        return 0
+
+    max_dist_to_food = 0
+    for food_pos in food_list:
+        dist = mazeDistance(position, food_pos, problem.startingGameState)
+        if dist > max_dist_to_food:
+            max_dist_to_food = dist
          
-    return 0
+    return max_dist_to_food
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
@@ -487,9 +520,8 @@ class ClosestDotSearchAgent(SearchAgent):
         problem = AnyFoodSearchProblem(gameState)
 
         "*** TTU CS 5368 Fall 2025 YOUR CODE HERE ***"
-    
+        return search.bfs(problem)
 
-        util.raiseNotDefined()
 
 class AnyFoodSearchProblem(PositionSearchProblem):
     """
@@ -525,7 +557,7 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         x,y = state
 
         "*** TTU CS 5368 Fall 2025 YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.food[x][y]
 
 def mazeDistance(point1, point2, gameState):
     """
